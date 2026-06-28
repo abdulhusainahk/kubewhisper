@@ -1,0 +1,15 @@
+{
+  "//": "Copy this block into your Claude Desktop config (claude_desktop_config.json) and edit the cwd path.",
+  "mcpServers": {
+    "kubewhisper": {
+      "command": "python",
+      "args": ["-m", "kubewhisper.server"],
+      "cwd": "C:/Users/Administrator/kubewhisper",
+      "env": {
+        "PROMETHEUS_URL": "http://localhost:9090",
+        "KUBEWHISPER_ALLOW_WRITES": "false",
+        "GITHUB_TOKEN": ""
+      }
+    }
+  }
+}
