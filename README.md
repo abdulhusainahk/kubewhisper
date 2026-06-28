@@ -22,10 +22,60 @@ real DevOps work. This is a small, honest, safety-first example of how.
 
 | Tool | Mode | What it does |
 |------|------|--------------|
+| `list_clusters` | 🟢 read-only | list configured clusters + their routing hints |
+| `resolve_cluster` | 🟢 read-only | decide which cluster an alert/error belongs to |
 | `k8s_get_resources` | 🟢 read-only | pods / deployments / services / nodes / events, with status |
 | `prometheus_query` | 🟢 read-only | run an instant PromQL query |
 | `github_actions_runs` | 🟢 read-only | list recent workflow runs for a repo |
 | `scale_deployment` | 🔴 write | scale a Deployment — **disabled by default**, previews first, every call audited |
+| `send_slack_message` | 🟡 outbound | post an incident/remediation note to Slack |
+
+## 🌐 Multi-cluster + error-context routing
+
+Drop a `clusters.json` next to the server (or point `KUBEWHISPER_CLUSTERS` at it).
+Each cluster maps to a kubeconfig context, a Prometheus URL, and routing hints:
+
+```json
+{
+  "default_cluster": "prod-mumbai",
+  "clusters": [
+    { "name": "prod-mumbai", "kube_context": "gke_proj_asia-south1_prod",
+      "prometheus_url": "http://prometheus.prod-mumbai:9090",
+      "match": { "keywords": ["prod","mumbai","live","p1"], "namespaces": ["streaming","ingest"] } },
+    { "name": "staging", "kube_context": "gke_proj_asia-south1_staging",
+      "prometheus_url": "http://prometheus.staging:9090",
+      "match": { "keywords": ["staging","qa"], "namespaces": ["streaming-staging"] } }
+  ]
+}
+```
+
+Now the agent can route by the **error context**: given an alert like
+*"P1: transcode pods OOMing on the Mumbai live stream"*, it calls `resolve_cluster`,
+matches `mumbai` / `live` / `transcode` → `prod-mumbai`, and targets that cluster's
+kube context + Prometheus automatically. Every cluster-scoped tool also accepts an
+explicit `cluster` argument. With no `clusters.json`, it falls back to your current
+kube context. See [`clusters.example.json`](clusters.example.json).
+
+## 💬 Slack bot
+
+Two ways to use Slack:
+
+1. **Outbound notes from any MCP client** — the `send_slack_message` tool (set
+   `SLACK_BOT_TOKEN` or `SLACK_WEBHOOK_URL`).
+2. **A full Slack bot** ([`slack_bridge.py`](slack_bridge.py)) — @mention it in a
+   channel (*"@KubeWhisper which pods are failing in prod?"*) and it runs a Claude
+   tool-use loop over these tools, routes to the right cluster, and replies in-thread.
+
+```bash
+pip install -r requirements-slack.txt
+export ANTHROPIC_API_KEY=...      # console.anthropic.com
+export SLACK_BOT_TOKEN=xoxb-...   # scopes: app_mentions:read, chat:write
+export SLACK_APP_TOKEN=xapp-...   # Socket Mode
+python slack_bridge.py
+```
+
+The bot is read-only by default — `scale_deployment` stays preview-only unless an
+operator sets `KUBEWHISPER_ALLOW_WRITES=true` on the bot process.
 
 ## 🔐 Safety model (the whole point)
 

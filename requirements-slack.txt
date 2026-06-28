@@ -1,0 +1,4 @@
+# Extra deps for the optional Slack bot bridge (slack_bridge.py).
+-r requirements.txt
+anthropic>=0.40.0
+slack_bolt>=1.18.0

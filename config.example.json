@@ -1,14 +1,17 @@
 {
-  "//": "Copy this block into your Claude Desktop config (claude_desktop_config.json) and edit the cwd path.",
+  "//": "Copy this block into your Claude Desktop config (claude_desktop_config.json) and edit cwd.",
   "mcpServers": {
     "kubewhisper": {
       "command": "python",
       "args": ["-m", "kubewhisper.server"],
       "cwd": "C:/Users/Administrator/kubewhisper",
       "env": {
-        "PROMETHEUS_URL": "http://localhost:9090",
+        "KUBEWHISPER_CLUSTERS": "C:/Users/Administrator/kubewhisper/clusters.json",
         "KUBEWHISPER_ALLOW_WRITES": "false",
-        "GITHUB_TOKEN": ""
+        "PROMETHEUS_URL": "http://localhost:9090",
+        "GITHUB_TOKEN": "",
+        "SLACK_BOT_TOKEN": "",
+        "SLACK_DEFAULT_CHANNEL": "#alerts"
       }
     }
   }

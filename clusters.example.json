@@ -1,0 +1,33 @@
+{
+  "//": "Copy to clusters.json and edit. kube_context must match `kubectl config get-contexts`.",
+  "default_cluster": "prod-mumbai",
+  "clusters": [
+    {
+      "name": "prod-mumbai",
+      "kube_context": "gke_my-project_asia-south1_prod",
+      "prometheus_url": "http://prometheus.monitoring.prod-mumbai:9090",
+      "match": {
+        "keywords": ["prod", "production", "mumbai", "live", "match-day", "p1"],
+        "namespaces": ["streaming", "ingest", "transcode"]
+      }
+    },
+    {
+      "name": "staging",
+      "kube_context": "gke_my-project_asia-south1_staging",
+      "prometheus_url": "http://prometheus.monitoring.staging:9090",
+      "match": {
+        "keywords": ["staging", "stage", "qa", "preprod"],
+        "namespaces": ["streaming-staging"]
+      }
+    },
+    {
+      "name": "dev-local",
+      "kube_context": "kind-kubewhisper",
+      "prometheus_url": "http://localhost:9090",
+      "match": {
+        "keywords": ["dev", "local", "kind", "minikube"],
+        "namespaces": ["default"]
+      }
+    }
+  ]
+}
