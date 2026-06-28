@@ -1,0 +1,45 @@
+# Least-privilege identity for KubeWhisper's read-only tools.
+# Apply:  kubectl apply -f deploy/rbac-readonly.yaml
+# Then generate a kubeconfig for this ServiceAccount and point KUBECONFIG at it.
+#
+# This grants ONLY get/list/watch on the resources the read-only tools touch.
+# The scale_deployment write tool needs an extra rule (commented at the bottom)
+# AND KUBEWHISPER_ALLOW_WRITES=true — keep it off for demos.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubewhisper
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubewhisper-readonly
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "nodes", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubewhisper-readonly
+subjects:
+  - kind: ServiceAccount
+    name: kubewhisper
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: kubewhisper-readonly
+  apiGroup: rbac.authorization.k8s.io
+# ---------------------------------------------------------------------------
+# To ALSO allow the guarded scale_deployment tool, add a separate Role:
+# rules:
+#   - apiGroups: ["apps"]
+#     resources: ["deployments/scale"]
+#     verbs: ["update", "patch"]
+# ---------------------------------------------------------------------------
