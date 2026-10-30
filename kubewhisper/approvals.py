@@ -10,8 +10,8 @@ import json
 import os
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 from uuid import uuid4
 
 APPROVALS_PATH = os.environ.get("KUBEWHISPER_APPROVALS", "kubewhisper-approvals.json")

@@ -92,7 +92,7 @@ app = App(token=os.environ["SLACK_BOT_TOKEN"])
 def _run(name: str, args: dict) -> str:
     try:
         return str(_fn(name)(**args))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — tool errors go back to the model, not crash the loop
         return f"ERROR running {name}: {exc}"
 
 
@@ -157,7 +157,7 @@ def on_mention(event, say):
     say(text=":hourglass_flowing_sand: checking…", thread_ts=thread_ts)
     try:
         answer = ask_claude(question, ctx)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — surface any failure in-thread
         answer = f":warning: {exc}"
     say(text=answer, thread_ts=thread_ts)
 

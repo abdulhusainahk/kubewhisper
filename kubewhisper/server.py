@@ -32,7 +32,7 @@ def _k8s(context: str | None):
 
     try:
         config.load_kube_config(context=context)
-    except Exception:
+    except config.ConfigException:
         config.load_incluster_config()
     return client.CoreV1Api(), client.AppsV1Api()
 

@@ -7,12 +7,12 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 AUDIT_PATH = os.environ.get("KUBEWHISPER_AUDIT_LOG", "kubewhisper-audit.jsonl")
 
 
 def record(entry: dict) -> None:
-    entry = {"ts": datetime.now(timezone.utc).isoformat(), **entry}
+    entry = {"ts": datetime.now(UTC).isoformat(), **entry}
     with open(AUDIT_PATH, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry) + "\n")

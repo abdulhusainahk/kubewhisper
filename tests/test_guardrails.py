@@ -5,7 +5,7 @@ These run without a cluster: they exercise the safety logic, not kubectl.
 import importlib
 import os
 
-import kubewhisper.server as server
+from kubewhisper import server
 
 
 def _callable(s):
