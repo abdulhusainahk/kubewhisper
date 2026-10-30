@@ -75,7 +75,16 @@ python slack_bridge.py
 ```
 
 The bot is read-only by default — `scale_deployment` stays preview-only unless an
-operator sets `KUBEWHISPER_ALLOW_WRITES=true` on the bot process.
+operator sets `KUBEWHISPER_ALLOW_WRITES=true` on the bot process. Even then, the model
+never executes a write: it posts **Approve / Deny** buttons in the thread, and the change
+runs only when a human approves.
+
+- `KUBEWHISPER_APPROVERS=U0123,U0456` limits who may approve (Slack user IDs). Clicks from
+  anyone else are rejected without consuming the request.
+- Pending approvals are stored in `KUBEWHISPER_APPROVALS` (default
+  `kubewhisper-approvals.json`), so a bot restart doesn't lose them.
+- Each approval is single-use and expires after `KUBEWHISPER_APPROVAL_TTL` seconds
+  (default 3600).
 
 ## 🔐 Safety model (the whole point)
 
@@ -114,10 +123,13 @@ Copy the block in [`config.example.json`](config.example.json) into your
 
 ```bash
 pip install pytest
-pytest -q          # guardrail tests prove writes are refused unless explicitly enabled
+pytest -q          # guardrail + approval-flow tests; no cluster or Slack needed
 ```
 
-CI runs lint + import check + guardrail tests on every push (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+The guardrail tests prove writes are refused unless explicitly enabled and confirmed; the
+approval tests prove a write runs only after a live, authorized, single-use approval.
+
+CI runs lint + import check + tests on every push (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ---
 

@@ -5,6 +5,7 @@ venv/
 .env
 *.jsonl
 kubewhisper-audit.jsonl
+kubewhisper-approvals.json*
 clusters.json
 .pytest_cache/
 .ruff_cache/

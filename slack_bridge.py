@@ -26,13 +26,13 @@ Run it:
 from __future__ import annotations
 
 import os
-from uuid import uuid4
 
 import anthropic
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 import kubewhisper.server as kw
+from kubewhisper.approvals import ApprovalStore, decide
 
 MODEL = "claude-opus-4-8"
 MAX_TOOL_ITERATIONS = 8
@@ -41,8 +41,7 @@ WRITE_TOOLS = {"scale_deployment"}          # require Slack approval, never auto
 WRITES_ENABLED = os.environ.get("KUBEWHISPER_ALLOW_WRITES", "false").lower() == "true"
 APPROVERS = {u.strip() for u in os.environ.get("KUBEWHISPER_APPROVERS", "").split(",") if u.strip()}
 
-# Pending approvals: pid -> {"name", "args", "channel", "thread_ts", "question"}
-PENDING: dict[str, dict] = {}
+APPROVALS = ApprovalStore()
 
 SYSTEM = (
     "You are KubeWhisper, an SRE assistant operating over DevOps tools. "
@@ -121,8 +120,7 @@ def _handle_tool(name: str, args: dict, ctx: dict) -> str:
         if not WRITES_ENABLED:
             return ("Writes are disabled on this bot (KUBEWHISPER_ALLOW_WRITES=false). "
                     "I can only propose this change, not request execution.")
-        pid = uuid4().hex[:8]
-        PENDING[pid] = {"name": name, "args": args, **ctx}
+        pid = APPROVALS.propose(name, args, ctx)
         _post_approval(ctx, pid, name, args)
         return (f"Proposed {name}({args}). Posted an approval request to Slack — "
                 "an authorized operator must click Approve before anything runs.")
@@ -169,23 +167,19 @@ def _resolve_approval(body, client, approve: bool):
     pid = body["actions"][0]["value"]
     chan, ts = body["channel"]["id"], body["message"]["ts"]
 
-    if APPROVERS and user not in APPROVERS:
+    d = decide(APPROVALS, pid, user, approve, APPROVERS, _run)
+    if d.outcome == "unauthorized":
         client.chat_postMessage(channel=chan, thread_ts=ts,
                                 text=f":no_entry: <@{user}> is not authorized to approve.")
-        return
-    p = PENDING.pop(pid, None)
-    if not p:
+    elif d.outcome == "expired":
         client.chat_update(channel=chan, ts=ts, text="This approval has expired or was already handled.", blocks=[])
-        return
-    if not approve:
+    elif d.outcome == "denied":
         client.chat_update(channel=chan, ts=ts, blocks=[],
-                           text=f":x: Denied by <@{user}> — `{p['name']}` not run.")
-        return
-    # Execute with confirm=True; the server still enforces KUBEWHISPER_ALLOW_WRITES.
-    result = _run(p["name"], {**p["args"], "confirm": True})
-    client.chat_update(channel=chan, ts=ts, blocks=[],
-                       text=f":white_check_mark: Approved by <@{user}> — executed `{p['name']}`.")
-    client.chat_postMessage(channel=chan, thread_ts=p["thread_ts"], text=f"```{result}```")
+                           text=f":x: Denied by <@{user}> — `{d.proposal['name']}` not run.")
+    else:
+        client.chat_update(channel=chan, ts=ts, blocks=[],
+                           text=f":white_check_mark: Approved by <@{user}> — executed `{d.proposal['name']}`.")
+        client.chat_postMessage(channel=chan, thread_ts=d.proposal["thread_ts"], text=f"```{d.result}```")
 
 
 @app.action("kw_approve")
